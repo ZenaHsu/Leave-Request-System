@@ -315,7 +315,7 @@ async function loadAll() {
     api({ action: 'getSettings' })
   ]);
   employees = await api({ action: 'getEmployees' });
-  const minUnit = settings.minUnit || '1';
+  const minUnit = String(settings.minUnit || '1');
   document.getElementById('btn-half').style.display = minUnit === '0.5' ? '' : 'none';
   document.getElementById('unit-yes').classList.toggle('active', minUnit === '0.5');
   document.getElementById('unit-no').classList.toggle('active', minUnit === '1');
