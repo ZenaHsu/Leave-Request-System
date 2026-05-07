@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>請假管理系統</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f5f4f0;--surface:#fff;--border:#e2e0d8;--border-strong:#c8c5bb;
+  --text:#1a1917;--text-muted:#6b6860;--text-hint:#9e9b93;--accent:#1a1917;
+  --green-bg:#eaf3de;--green-text:#3b6d11;
+  --red-bg:#fcebeb;--red-text:#a32d2d;
+  --amber-bg:#faeeda;--amber-text:#854f0b;
+  --blue-bg:#e6f1fb;--blue-text:#185fa5;
+  --purple-bg:#f0ecfb;--purple-text:#5b35a8;
+  --radius:10px;--radius-sm:6px;
+}
+body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(--bg);color:var(--text);font-size:15px;min-height:100vh}
+.login-wrap{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:2rem}
+.login-card{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius);padding:2.5rem 2rem;width:100%;max-width:380px}
+.login-title{font-size:20px;font-weight:600;margin-bottom:6px}
+.login-sub{font-size:14px;color:var(--text-muted);margin-bottom:2rem}
+.app{display:none;max-width:900px;margin:0 auto;padding:1.5rem 1rem 4rem}
+.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem}
+.header-title{font-size:17px;font-weight:600}
+.header-user{font-size:13px;color:var(--text-muted);display:flex;align-items:center;gap:8px}
+.manager-badge{background:var(--blue-bg);color:var(--blue-text);font-size:11px;padding:2px 8px;border-radius:100px;font-weight:500}
+.tab-bar{display:flex;gap:2px;border-bottom:1px solid var(--border);margin-bottom:1.5rem;flex-wrap:wrap}
+.tab{padding:9px 14px;font-size:14px;cursor:pointer;color:var(--text-muted);border:none;background:none;border-bottom:2px solid transparent;margin-bottom:-1px;border-radius:var(--radius-sm) var(--radius-sm) 0 0}
+.tab:hover{color:var(--text)}.tab.active{color:var(--text);border-bottom-color:var(--text);font-weight:500}
+.section{display:none}.section.active{display:block}
+.card{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius);padding:1.25rem;margin-bottom:1rem}
+.card-title{font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:1rem}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-group{display:flex;flex-direction:column;gap:5px}
+.form-group.full{grid-column:1/-1}
+label{font-size:13px;color:var(--text-muted);font-weight:500}
+input,select,textarea{width:100%;padding:9px 12px;font-size:14px;border:0.5px solid var(--border-strong);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-family:inherit}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--text)}
+textarea{resize:vertical;min-height:76px}
+.btn{padding:9px 18px;font-size:14px;border:0.5px solid var(--border-strong);border-radius:var(--radius-sm);cursor:pointer;background:var(--surface);color:var(--text);font-family:inherit}
+.btn:hover{background:var(--bg)}
+.btn-primary{background:var(--accent);color:#fff;border-color:var(--accent)}.btn-primary:hover{opacity:.85;background:var(--accent)}
+.btn-sm{padding:5px 12px;font-size:13px}
+.btn-green{color:var(--green-text);border-color:var(--green-text)}.btn-green:hover{background:var(--green-bg)}
+.btn-red{color:var(--red-text);border-color:var(--red-text)}.btn-red:hover{background:var(--red-bg)}
+.badge{display:inline-block;padding:3px 10px;border-radius:100px;font-size:12px;font-weight:500}
+.badge-pending{background:var(--amber-bg);color:var(--amber-text)}
+.badge-approved{background:var(--green-bg);color:var(--green-text)}
+.badge-rejected{background:var(--red-bg);color:var(--red-text)}
+.badge-type{background:var(--purple-bg);color:var(--purple-text);font-size:11px;padding:2px 8px}
+.leave-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:0.5px solid var(--border);flex-wrap:wrap}
+.leave-row:last-child{border-bottom:none}
+.leave-info{flex:1;min-width:180px}
+.leave-name{font-size:14px;font-weight:500;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.leave-meta{font-size:13px;color:var(--text-muted);margin-top:3px;line-height:1.6}
+.leave-actions{display:flex;gap:8px;align-items:center;flex-shrink:0}
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:1.25rem}
+.stat-card{background:var(--bg);border-radius:var(--radius-sm);padding:1rem;text-align:center}
+.stat-num{font-size:26px;font-weight:600}
+.stat-label{font-size:12px;color:var(--text-muted);margin-top:3px}
+.quota-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:0.5px solid var(--border);font-size:14px}
+.quota-row:last-child{border-bottom:none}
+.quota-bar{flex:1;height:6px;border-radius:3px;background:var(--border);overflow:hidden}
+.quota-fill{height:100%;border-radius:3px;background:var(--accent);transition:width .3s}
+.quota-warn .quota-fill{background:var(--red-text)}
+.empty{text-align:center;padding:2.5rem 1rem;color:var(--text-hint);font-size:14px}
+.alert{padding:10px 14px;border-radius:var(--radius-sm);font-size:13px;margin-bottom:1rem}
+.alert-success{background:var(--green-bg);color:var(--green-text)}
+.alert-error{background:var(--red-bg);color:var(--red-text)}
+.pending-dot{display:inline-block;background:var(--red-bg);color:var(--red-text);border-radius:100px;font-size:11px;padding:1px 6px;font-weight:600;margin-left:4px}
+.loading{text-align:center;padding:3rem;color:var(--text-hint)}
+.info-box{background:var(--blue-bg);color:var(--blue-text);border-radius:var(--radius-sm);padding:10px 14px;font-size:13px;margin-bottom:1rem}
+.half-toggle{display:flex;gap:0;border:0.5px solid var(--border-strong);border-radius:var(--radius-sm);overflow:hidden}
+.half-toggle button{flex:1;padding:8px;font-size:13px;border:none;background:var(--surface);color:var(--text-muted);cursor:pointer;font-family:inherit}
+.half-toggle button.active{background:var(--accent);color:#fff}
+.section-sep{border:none;border-top:0.5px solid var(--border);margin:1rem 0}
+@media(max-width:560px){.form-grid{grid-template-columns:1fr}.form-group.full{grid-column:1}}
+</style>
+</head>
+<body>
+
+<!-- 登入 -->
+<div class="login-wrap" id="loginWrap">
+  <div class="login-card">
+    <div class="login-title">🗓 請假管理系統</div>
+    <div class="login-sub">請選擇你的身份登入</div>
+    <div class="form-group" style="margin-bottom:1rem">
+      <label>選擇員工</label>
+      <select id="loginSelect"><option value="">載入中…</option></select>
+    </div>
+    <div class="form-group" style="margin-bottom:1.5rem">
+      <label>通行碼（預設：姓名全名）</label>
+      <input type="password" id="loginPass" placeholder="例如：王小明" onkeydown="if(event.key==='Enter')login()">
+    </div>
+    <button class="btn btn-primary" style="width:100%" onclick="login()">登入</button>
+    <div id="loginError" style="color:var(--red-text);font-size:13px;margin-top:10px;display:none"></div>
+  </div>
+</div>
+
+<!-- 主系統 -->
+<div class="app" id="mainApp">
+  <div class="header">
+    <div class="header-title">請假管理系統</div>
+    <div class="header-user">
+      <span id="headerName"></span>
+      <span class="manager-badge" id="headerManagerBadge" style="display:none">主管</span>
+      <button class="btn btn-sm" onclick="logout()">登出</button>
+    </div>
+  </div>
+  <div id="alertBox" style="display:none"></div>
+
+  <div class="tab-bar">
+    <button class="tab active" onclick="switchTab('apply')">申請請假</button>
+    <button class="tab" onclick="switchTab('myLeaves')">我的紀錄</button>
+    <button class="tab" id="reviewTab" style="display:none" onclick="switchTab('review')">審核申請</button>
+    <button class="tab" onclick="switchTab('overview')">假別概覽</button>
+    <button class="tab" id="settingsTab" style="display:none" onclick="switchTab('settings')">系統設定</button>
+  </div>
+
+  <!-- 申請請假 -->
+  <div class="section active" id="section-apply">
+    <div class="card" id="annualInfoCard" style="display:none">
+      <div id="annualInfoText"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">新增請假申請</div>
+      <div class="form-grid">
+        <div class="form-group" id="f-emp-group" style="display:none">
+          <label>代為申請員工</label>
+          <select id="f-emp-select" onchange="updateAnnualInfo()"></select>
+        </div>
+        <div class="form-group">
+          <label>假別</label>
+          <select id="f-type" onchange="updateAnnualInfo()">
+            <option value="特休">特休</option>
+            <option value="病假">病假</option>
+            <option value="事假">事假</option>
+            <option value="生理假">生理假</option>
+            <option value="婚假">婚假</option>
+            <option value="喪假">喪假</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>開始日期</label>
+          <input type="date" id="f-start" onchange="calcDaysPreview()">
+        </div>
+        <div class="form-group">
+          <label>結束日期</label>
+          <input type="date" id="f-end" onchange="calcDaysPreview()">
+        </div>
+        <div class="form-group" id="halfDayGroup">
+          <label>請假單位</label>
+          <div class="half-toggle">
+            <button class="active" id="btn-full" onclick="setUnit('full')">全天</button>
+            <button id="btn-half" onclick="setUnit('half')" style="display:none">半天（0.5）</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>預計天數</label>
+          <input type="text" id="f-days-preview" readonly placeholder="選擇日期後自動計算" style="background:var(--bg)">
+        </div>
+        <div class="form-group full">
+          <label>請假原因（選填）</label>
+          <textarea id="f-reason" placeholder="說明請假事由…"></textarea>
+        </div>
+      </div>
+      <div style="margin-top:1rem;display:flex;justify-content:flex-end">
+        <button class="btn btn-primary" onclick="submitLeave()">送出申請</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 我的紀錄 -->
+  <div class="section" id="section-myLeaves">
+    <div class="card" style="margin-bottom:1rem">
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <select id="filter-status" style="width:auto" onchange="renderMyLeaves()">
+          <option value="">所有狀態</option>
+          <option value="待審核">待審核</option>
+          <option value="已核准">已核准</option>
+          <option value="已拒絕">已拒絕</option>
+        </select>
+        <select id="filter-type" style="width:auto" onchange="renderMyLeaves()">
+          <option value="">所有假別</option>
+          <option>特休</option><option>病假</option><option>事假</option>
+          <option>生理假</option><option>婚假</option><option>喪假</option>
+        </select>
+      </div>
+    </div>
+    <div class="card" id="myLeavesList"><div class="loading">載入中…</div></div>
+  </div>
+
+  <!-- 審核 -->
+  <div class="section" id="section-review">
+    <div class="card" id="reviewList"><div class="loading">載入中…</div></div>
+  </div>
+
+  <!-- 概覽 -->
+  <div class="section" id="section-overview">
+    <div class="stat-grid" id="statGrid"></div>
+    <div class="card">
+      <div class="card-title">特休餘額（本年度週期）</div>
+      <div id="quotaList"><div class="loading">載入中…</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">各假別使用天數（已核准）</div>
+      <div id="typeStatList"></div>
+    </div>
+  </div>
+
+  <!-- 系統設定 -->
+  <div class="section" id="section-settings">
+    <div class="card">
+      <div class="card-title">最小請假單位</div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <label style="font-size:14px;color:var(--text)">允許半天（0.5天）請假</label>
+        <div class="half-toggle" style="width:160px">
+          <button id="unit-yes" onclick="saveUnit('0.5')" class="active">允許半天</button>
+          <button id="unit-no" onclick="saveUnit('1')">僅整天</button>
+        </div>
+      </div>
+    </div>
+    <hr class="section-sep">
+    <div class="card">
+      <div class="card-title">新增員工</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>姓名</label>
+          <input type="text" id="s-name" placeholder="王小明">
+        </div>
+        <div class="form-group">
+          <label>到職日</label>
+          <input type="date" id="s-startDate">
+        </div>
+        <div class="form-group">
+          <label>身份</label>
+          <select id="s-role">
+            <option value="employee">員工</option>
+            <option value="manager">主管</option>
+          </select>
+        </div>
+        <div class="form-group" style="justify-content:flex-end">
+          <label>&nbsp;</label>
+          <button class="btn btn-primary" onclick="addEmployee()">新增員工</button>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">員工列表</div>
+      <div id="empList"><div class="loading">載入中…</div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API_URL = 'https://script.google.com/macros/s/AKfycbydUYGSdgDZXAYS3pygLsnhmQpKrMfp7dAo7YbWt9rvnFg_W7V2T9ADXyJzuQLRu1Hb/exec';
+
+let currentUser = null, employees = [], leaves = [], settings = {}, isHalfDay = false;
+let alertTimer = null;
+
+// ── API ──────────────────────────────────────────────────────
+async function api(params) {
+  const r = await fetch(API_URL + '?' + new URLSearchParams(params));
+  return r.json();
+}
+async function apiPost(body) {
+  const r = await fetch(API_URL, { method:'POST', body:JSON.stringify(body), headers:{'Content-Type':'application/json'} });
+  return r.json();
+}
+
+// ── 登入 ──────────────────────────────────────────────────────
+async function initLogin() {
+  employees = await api({ action: 'getEmployees' });
+  const sel = document.getElementById('loginSelect');
+  sel.innerHTML = '<option value="">— 請選擇 —</option>';
+  employees.forEach(e => sel.innerHTML += `<option value="${e.id}">${e.name}</option>`);
+}
+
+function login() {
+  const empId = document.getElementById('loginSelect').value;
+  const pass = document.getElementById('loginPass').value.trim();
+  const errEl = document.getElementById('loginError');
+  if (!empId) { errEl.textContent = '請選擇員工'; errEl.style.display = 'block'; return; }
+  const emp = employees.find(e => e.id === empId);
+  if (pass !== emp.name) { errEl.textContent = '通行碼錯誤，預設為姓名全名'; errEl.style.display = 'block'; return; }
+  errEl.style.display = 'none';
+  currentUser = emp;
+  document.getElementById('loginWrap').style.display = 'none';
+  document.getElementById('mainApp').style.display = 'block';
+  document.getElementById('headerName').textContent = emp.name;
+  if (emp.role === 'manager') {
+    document.getElementById('headerManagerBadge').style.display = 'inline-block';
+    document.getElementById('reviewTab').style.display = 'inline-block';
+    document.getElementById('settingsTab').style.display = 'inline-block';
+    document.getElementById('f-emp-group').style.display = 'flex';
+    const sel = document.getElementById('f-emp-select');
+    sel.innerHTML = employees.map(e => `<option value="${e.id}">${e.name}</option>`).join('');
+  }
+  loadAll();
+}
+
+function logout() {
+  currentUser = null;
+  document.getElementById('loginWrap').style.display = 'flex';
+  document.getElementById('mainApp').style.display = 'none';
+  document.getElementById('loginPass').value = '';
+}
+
+// ── 資料 ──────────────────────────────────────────────────────
+async function loadAll() {
+  [leaves, settings] = await Promise.all([
+    api({ action: 'getAllLeaves' }),
+    api({ action: 'getSettings' })
+  ]);
+  employees = await api({ action: 'getEmployees' });
+  const minUnit = settings.minUnit || '1';
+  document.getElementById('btn-half').style.display = minUnit === '0.5' ? '' : 'none';
+  document.getElementById('unit-yes').classList.toggle('active', minUnit === '0.5');
+  document.getElementById('unit-no').classList.toggle('active', minUnit === '1');
+  renderMyLeaves(); renderReview(); renderOverview(); renderEmpList(); updatePendingBadge(); updateAnnualInfo();
+}
+
+// ── Tab ───────────────────────────────────────────────────────
+function switchTab(id) {
+  const ids = ['apply','myLeaves','review','overview','settings'];
+  document.querySelectorAll('.tab').forEach((t,i) => { if(ids[i]) t.classList.toggle('active', ids[i]===id); });
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById('section-'+id).classList.add('active');
+}
+
+// ── Alert ─────────────────────────────────────────────────────
+function showAlert(msg, type) {
+  const el = document.getElementById('alertBox');
+  el.className = 'alert alert-'+type; el.textContent = msg; el.style.display = 'block';
+  clearTimeout(alertTimer); alertTimer = setTimeout(() => el.style.display = 'none', 3500);
+}
+
+// ── 半天 / 天數計算 ───────────────────────────────────────────
+function setUnit(u) {
+  isHalfDay = (u === 'half');
+  document.getElementById('btn-full').classList.toggle('active', !isHalfDay);
+  document.getElementById('btn-half').classList.toggle('active', isHalfDay);
+  calcDaysPreview();
+}
+
+function calcDaysPreview() {
+  const s = document.getElementById('f-start').value;
+  const e = document.getElementById('f-end').value;
+  const el = document.getElementById('f-days-preview');
+  if (!s || !e || e < s) { el.value = ''; return; }
+  let days = Math.round((new Date(e) - new Date(s)) / 86400000) + 1;
+  if (isHalfDay) days = 0.5;
+  el.value = days + ' 天';
+}
+
+function getDays() {
+  const s = document.getElementById('f-start').value;
+  const e = document.getElementById('f-end').value;
+  if (!s || !e || e < s) return null;
+  if (isHalfDay) return 0.5;
+  return Math.round((new Date(e) - new Date(s)) / 86400000) + 1;
+}
+
+// ── 特休資訊提示 ──────────────────────────────────────────────
+function updateAnnualInfo() {
+  const type = document.getElementById('f-type').value;
+  const card = document.getElementById('annualInfoCard');
+  const text = document.getElementById('annualInfoText');
+  let empId = currentUser?.id;
+  if (currentUser?.role === 'manager') empId = document.getElementById('f-emp-select')?.value || empId;
+  const emp = employees.find(e => e.id === empId);
+  if (type === '特休' && emp) {
+    const period = emp.period;
+    card.style.display = 'block';
+    text.innerHTML = `<span style="color:var(--blue-text);font-size:13px">
+      📋 ${emp.name} 本年度特休：<strong>${emp.quota} 天</strong>｜已使用：<strong>${emp.usedAnnual} 天</strong>｜<strong style="color:${emp.remainAnnual===0?'var(--red-text)':'inherit'}">剩餘 ${emp.remainAnnual} 天</strong>
+      ${period ? `<br><span style="color:var(--text-hint)">週期：${period.start} ～ ${period.end}</span>` : ''}
+    </span>`;
+  } else {
+    card.style.display = 'none';
+  }
+}
+
+// ── 申請 ──────────────────────────────────────────────────────
+async function submitLeave() {
+  const isManager = currentUser.role === 'manager';
+  const empId = isManager ? document.getElementById('f-emp-select').value : currentUser.id;
+  const emp = employees.find(e => e.id === empId) || currentUser;
+  const type = document.getElementById('f-type').value;
+  const start = document.getElementById('f-start').value;
+  const end = document.getElementById('f-end').value;
+  const reason = document.getElementById('f-reason').value;
+  const days = getDays();
+  if (!start || !end) { showAlert('請填寫開始和結束日期', 'error'); return; }
+  if (days === null) { showAlert('結束日期不可早於開始日期', 'error'); return; }
+  // 特休餘額檢查
+  if (type === '特休' && days > emp.remainAnnual) {
+    showAlert(`特休餘額不足！剩餘 ${emp.remainAnnual} 天，申請 ${days} 天`, 'error'); return;
+  }
+  const res = await apiPost({ action:'submitLeave', empId:emp.id, empName:emp.name, type, start, end, days, reason });
+  if (res.success) {
+    document.getElementById('f-start').value = '';
+    document.getElementById('f-end').value = '';
+    document.getElementById('f-reason').value = '';
+    document.getElementById('f-days-preview').value = '';
+    isHalfDay = false;
+    setUnit('full');
+    showAlert(`✓ 已送出申請（${emp.name}｜${type}｜${days} 天），等待主管審核`, 'success');
+    await loadAll();
+  } else showAlert('送出失敗：' + res.error, 'error');
+}
+
+// ── 我的紀錄 ──────────────────────────────────────────────────
+function renderMyLeaves() {
+  const list = document.getElementById('myLeavesList');
+  const sf = document.getElementById('filter-status').value;
+  const tf = document.getElementById('filter-type').value;
+  let data = currentUser?.role === 'manager' ? leaves : leaves.filter(l => l.empId === currentUser?.id);
+  if (sf) data = data.filter(l => l.status === sf);
+  if (tf) data = data.filter(l => l.type === tf);
+  if (!data.length) { list.innerHTML = '<div class="empty">沒有符合的紀錄</div>'; return; }
+  list.innerHTML = data.map(l => `
+    <div class="leave-row">
+      <div class="leave-info">
+        <div class="leave-name">${l.empName}<span class="badge badge-type">${l.type}</span></div>
+        <div class="leave-meta">${l.start}${l.days==0.5?' 上午半天':(' ～ '+l.end)}（${l.days} 天）${l.reason?'｜'+l.reason:''}<br>
+        <span style="font-size:12px;color:var(--text-hint)">申請日：${l.createdAt}</span></div>
+      </div>
+      <div class="leave-actions">
+        <span class="badge ${l.status==='已核准'?'badge-approved':l.status==='已拒絕'?'badge-rejected':'badge-pending'}">${l.status}</span>
+        ${l.status==='待審核'?`<button class="btn btn-sm btn-red" onclick="cancelLeave('${l.id}')">取消</button>`:''}
+      </div>
+    </div>`).join('');
+}
+
+async function cancelLeave(id) {
+  const res = await apiPost({ action:'cancelLeave', id });
+  if (res.success) { showAlert('已取消申請', 'success'); await loadAll(); }
+  else showAlert('取消失敗：'+res.error, 'error');
+}
+
+// ── 審核 ──────────────────────────────────────────────────────
+function renderReview() {
+  if (currentUser?.role !== 'manager') return;
+  const list = document.getElementById('reviewList');
+  const pending = leaves.filter(l => l.status === '待審核');
+  if (!pending.length) { list.innerHTML = '<div class="empty">目前沒有待審核的申請 ✓</div>'; return; }
+  list.innerHTML = pending.map(l => `
+    <div class="leave-row">
+      <div class="leave-info">
+        <div class="leave-name">${l.empName}<span class="badge badge-type">${l.type}</span></div>
+        <div class="leave-meta">${l.start}${l.days==0.5?' 上午半天':(' ～ '+l.end)}（${l.days} 天）${l.reason?'｜'+l.reason:''}<br>
+        <span style="font-size:12px;color:var(--text-hint)">申請日：${l.createdAt}</span></div>
+      </div>
+      <div class="leave-actions">
+        <button class="btn btn-sm btn-green" onclick="reviewLeave('${l.id}','已核准')">核准</button>
+        <button class="btn btn-sm btn-red" onclick="reviewLeave('${l.id}','已拒絕')">拒絕</button>
+      </div>
+    </div>`).join('');
+}
+
+async function reviewLeave(id, status) {
+  const res = await apiPost({ action:'reviewLeave', id, status });
+  if (res.success) { showAlert(`已${status==='已核准'?'核准':'拒絕'}申請`, 'success'); await loadAll(); }
+  else showAlert('操作失敗：'+res.error, 'error');
+}
+
+function updatePendingBadge() {
+  const cnt = leaves.filter(l => l.status === '待審核').length;
+  const tab = document.getElementById('reviewTab');
+  if (!tab) return;
+  tab.innerHTML = cnt > 0 ? `審核申請 <span class="pending-dot">${cnt}</span>` : '審核申請';
+}
+
+// ── 概覽 ──────────────────────────────────────────────────────
+function renderOverview() {
+  const approved = leaves.filter(l => l.status === '已核准');
+  const pending = leaves.filter(l => l.status === '待審核');
+  const total = approved.reduce((s,l) => s + Number(l.days), 0);
+  document.getElementById('statGrid').innerHTML = `
+    <div class="stat-card"><div class="stat-num">${total}</div><div class="stat-label">已核准總天數</div></div>
+    <div class="stat-card"><div class="stat-num">${pending.length}</div><div class="stat-label">待審核申請</div></div>
+    <div class="stat-card"><div class="stat-num">${approved.length}</div><div class="stat-label">已核准筆數</div></div>
+    <div class="stat-card"><div class="stat-num">${employees.length}</div><div class="stat-label">員工人數</div></div>`;
+
+  // 特休餘額
+  const ql = document.getElementById('quotaList');
+  if (!employees.length) { ql.innerHTML = '<div class="empty">尚未設定員工</div>'; return; }
+  ql.innerHTML = employees.map(e => {
+    const pct = e.quota > 0 ? Math.min(100, Math.round(e.usedAnnual / e.quota * 100)) : 0;
+    const warn = pct >= 80;
+    return `<div class="quota-row ${warn?'quota-warn':''}">
+      <span style="min-width:72px;font-weight:500">${e.name}</span>
+      <div class="quota-bar"><div class="quota-fill" style="width:${pct}%"></div></div>
+      <span style="min-width:100px;text-align:right;font-size:13px;color:var(--text-muted)">剩 ${e.remainAnnual}／${e.quota} 天</span>
+    </div>`;
+  }).join('');
+
+  // 各假別統計
+  const types = ['特休','病假','事假','生理假','婚假','喪假'];
+  const tl = document.getElementById('typeStatList');
+  tl.innerHTML = types.map(t => {
+    const days = approved.filter(l => l.type === t).reduce((s,l) => s+Number(l.days), 0);
+    const cnt = approved.filter(l => l.type === t).length;
+    return `<div class="quota-row">
+      <span style="min-width:72px;font-weight:500">${t}</span>
+      <span style="color:var(--text-muted);font-size:13px;flex:1">${cnt} 筆</span>
+      <span style="font-weight:500">${days} 天</span>
+    </div>`;
+  }).join('');
+}
+
+// ── 員工設定 ──────────────────────────────────────────────────
+async function addEmployee() {
+  const name = document.getElementById('s-name').value.trim();
+  const startDate = document.getElementById('s-startDate').value;
+  const role = document.getElementById('s-role').value;
+  if (!name) { showAlert('請輸入員工姓名', 'error'); return; }
+  if (!startDate) { showAlert('請輸入到職日', 'error'); return; }
+  const res = await apiPost({ action:'addEmployee', name, startDate, role });
+  if (res.success) {
+    document.getElementById('s-name').value = '';
+    document.getElementById('s-startDate').value = '';
+    showAlert(`已新增員工：${name}`, 'success');
+    employees = await api({ action:'getEmployees' });
+    renderEmpList(); renderOverview();
+  } else showAlert('新增失敗：'+res.error, 'error');
+}
+
+async function removeEmployee(id) {
+  const res = await apiPost({ action:'removeEmployee', id });
+  if (res.success) {
+    showAlert('已刪除員工', 'success');
+    employees = await api({ action:'getEmployees' });
+    renderEmpList(); renderOverview();
+  } else showAlert('刪除失敗：'+res.error, 'error');
+}
+
+function renderEmpList() {
+  const el = document.getElementById('empList');
+  if (!employees.length) { el.innerHTML = '<div class="empty">尚未設定員工</div>'; return; }
+  el.innerHTML = employees.map(e => {
+    const quota = e.quota || 0;
+    const period = e.period;
+    return `<div class="quota-row">
+      <span style="min-width:80px;font-weight:500">${e.name}</span>
+      <span style="color:var(--text-muted);font-size:13px;flex:1">
+        到職：${e.startDate || '未設定'}｜特休 ${quota} 天｜${e.role==='manager'?'主管':'員工'}
+        ${period?`<br><span style="font-size:12px;color:var(--text-hint)">週期：${period.start}～${period.end}</span>`:''}
+      </span>
+      <button class="btn btn-sm btn-red" onclick="removeEmployee('${e.id}')">刪除</button>
+    </div>`;
+  }).join('');
+}
+
+async function saveUnit(val) {
+  const res = await apiPost({ action:'updateSetting', key:'minUnit', value:val });
+  if (res.success) { showAlert('已更新請假單位', 'success'); await loadAll(); }
+}
+
+initLogin();
+</script>
+</body>
+</html>
