@@ -255,7 +255,7 @@ textarea{resize:vertical;min-height:76px}
 </div>
 
 <script>
-const API_URL = 'https://script.google.com/macros/s/AKfycbydUYGSdgDZXAYS3pygLsnhmQpKrMfp7dAo7YbWt9rvnFg_W7V2T9ADXyJzuQLRu1Hb/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycby5J8t-4t7GglAtx2D7zqRH5IeycuhwxoTnRafD21MdiliIqWatc487QLLwVNmcwwpa/exec';
 
 let currentUser = null, employees = [], leaves = [], settings = {}, isHalfDay = false;
 let alertTimer = null;
@@ -266,7 +266,7 @@ async function api(params) {
   return r.json();
 }
 async function apiPost(body) {
-  const r = await fetch(API_URL, { method:'POST', body:JSON.stringify(body), headers:{'Content-Type':'application/json'} });
+  const r = await fetch(API_URL + '?' + new URLSearchParams(body));
   return r.json();
 }
 
