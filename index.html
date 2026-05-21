@@ -508,9 +508,6 @@ function renderOverview() {
   // 各假別統計（只看自己）
   const types = ['特休','病假','事假','生理假','婚假','喪假'];
   const tl = document.getElementById('typeStatList');
-  const myApproved = currentUser?.role === 'manager'
-    ? approved
-    : approved.filter(l => l.empId === currentUser?.id);
   const thisYear = new Date().getFullYear();
   const myThisYear = myApproved.filter(l => new Date(l.start).getFullYear() === thisYear);
   tl.innerHTML = `<div style="font-size:13px;color:var(--text-muted);margin-bottom:10px">${currentUser?.role === 'manager' ? '全公司' : currentUser?.name} 本年度</div>`
