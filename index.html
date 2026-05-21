@@ -208,6 +208,10 @@ textarea{resize:vertical;min-height:76px}
       <div class="card-title">各假別使用天數（已核准）</div>
       <div id="typeStatList"></div>
     </div>
+    <div class="card" id="empDetailCard" style="display:none">
+      <div class="card-title">員工各假別明細（本年度已核准）</div>
+      <div id="empDetailList"></div>
+    </div>
   </div>
 
   <!-- 系統設定 -->
@@ -478,11 +482,14 @@ function updatePendingBadge() {
 function renderOverview() {
   const approved = leaves.filter(l => l.status === '已核准');
   const pending = leaves.filter(l => l.status === '待審核');
-  const total = approved.reduce((s,l) => s + Number(l.days), 0);
+  const isManager = currentUser?.role === 'manager';
+  const myApproved = isManager ? approved : approved.filter(l => l.empId === currentUser?.id);
+  const myPending = isManager ? pending : pending.filter(l => l.empId === currentUser?.id);
+  const total = myApproved.reduce((s,l) => s + Number(l.days), 0);
   document.getElementById('statGrid').innerHTML = `
     <div class="stat-card"><div class="stat-num">${total}</div><div class="stat-label">已核准總天數</div></div>
-    <div class="stat-card"><div class="stat-num">${pending.length}</div><div class="stat-label">待審核申請</div></div>
-    <div class="stat-card"><div class="stat-num">${approved.length}</div><div class="stat-label">已核准筆數</div></div>
+    <div class="stat-card"><div class="stat-num">${myPending.length}</div><div class="stat-label">待審核申請</div></div>
+    <div class="stat-card"><div class="stat-num">${myApproved.length}</div><div class="stat-label">已核准筆數</div></div>
     <div class="stat-card"><div class="stat-num">${employees.length}</div><div class="stat-label">員工人數</div></div>`;
 
   // 特休餘額
@@ -498,18 +505,55 @@ function renderOverview() {
     </div>`;
   }).join('');
 
-  // 各假別統計
+  // 各假別統計（只看自己）
   const types = ['特休','病假','事假','生理假','婚假','喪假'];
   const tl = document.getElementById('typeStatList');
-  tl.innerHTML = types.map(t => {
-    const days = approved.filter(l => l.type === t).reduce((s,l) => s+Number(l.days), 0);
-    const cnt = approved.filter(l => l.type === t).length;
+  const myApproved = currentUser?.role === 'manager'
+    ? approved
+    : approved.filter(l => l.empId === currentUser?.id);
+  const thisYear = new Date().getFullYear();
+  const myThisYear = myApproved.filter(l => new Date(l.start).getFullYear() === thisYear);
+  tl.innerHTML = `<div style="font-size:13px;color:var(--text-muted);margin-bottom:10px">${currentUser?.role === 'manager' ? '全公司' : currentUser?.name} 本年度</div>`
+    + types.map(t => {
+    const src = currentUser?.role === 'manager' ? myThisYear : myThisYear;
+    const days = src.filter(l => l.type === t).reduce((s,l) => s+Number(l.days), 0);
+    const cnt = src.filter(l => l.type === t).length;
     return `<div class="quota-row">
       <span style="min-width:72px;font-weight:500">${t}</span>
       <span style="color:var(--text-muted);font-size:13px;flex:1">${cnt} 筆</span>
       <span style="font-weight:500">${days} 天</span>
     </div>`;
   }).join('');
+
+  // 員工各假別明細（主管限定）
+  const detailCard = document.getElementById('empDetailCard');
+  const detailList = document.getElementById('empDetailList');
+  if (currentUser?.role === 'manager' && employees.length) {
+    detailCard.style.display = 'block';
+    const thisYear = new Date().getFullYear();
+    detailList.innerHTML = employees.map(emp => {
+      const empLeaves = approved.filter(l => l.empId === emp.id && new Date(l.start).getFullYear() === thisYear);
+      const rows = types.map(t => {
+        const d = empLeaves.filter(l => l.type === t).reduce((s,l) => s+Number(l.days), 0);
+        const c = empLeaves.filter(l => l.type === t).length;
+        return d > 0 ? `<span style="display:inline-flex;align-items:center;gap:4px;margin-right:12px;font-size:13px">
+          <span class="badge badge-type">${t}</span>
+          <span style="color:var(--text-muted)">${c}筆</span>
+          <strong>${d}天</strong>
+        </span>` : '';
+      }).join('');
+      const totalDays = empLeaves.reduce((s,l) => s+Number(l.days), 0);
+      return `<div style="padding:12px 0;border-bottom:0.5px solid var(--border)">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:8px">
+          <span style="font-weight:500;font-size:14px">${emp.name}</span>
+          <span style="font-size:13px;color:var(--text-muted)">合計 <strong style="color:var(--text)">${totalDays} 天</strong></span>
+        </div>
+        <div style="flex-wrap:wrap;display:flex;gap:4px">${rows || '<span style="font-size:13px;color:var(--text-hint)">本年度尚無請假紀錄</span>'}</div>
+      </div>`;
+    }).join('');
+  } else {
+    detailCard.style.display = 'none';
+  }
 }
 
 // ── 員工設定 ──────────────────────────────────────────────────
