@@ -140,6 +140,7 @@ textarea{resize:vertical;min-height:76px}
             <option value="生理假">生理假</option>
             <option value="婚假">婚假</option>
             <option value="喪假">喪假</option>
+            <option value="生日假">🎂 生日假</option>
           </select>
         </div>
         <div class="form-group">
@@ -185,7 +186,7 @@ textarea{resize:vertical;min-height:76px}
         <select id="filter-type" style="width:auto" onchange="renderMyLeaves()">
           <option value="">所有假別</option>
           <option>特休</option><option>病假</option><option>事假</option>
-          <option>生理假</option><option>婚假</option><option>喪假</option>
+          <option>生理假</option><option>婚假</option><option>喪假</option><option>生日假</option>
         </select>
       </div>
     </div>
@@ -239,14 +240,17 @@ textarea{resize:vertical;min-height:76px}
           <input type="date" id="s-startDate">
         </div>
         <div class="form-group">
+          <label>生日（月-日，例如 05-22）</label>
+          <input type="text" id="s-birthday" placeholder="05-22">
+        </div>
+        <div class="form-group">
           <label>身份</label>
           <select id="s-role">
             <option value="employee">員工</option>
             <option value="manager">主管</option>
           </select>
         </div>
-        <div class="form-group" style="justify-content:flex-end">
-          <label>&nbsp;</label>
+        <div class="form-group full" style="justify-content:flex-end;flex-direction:row">
           <button class="btn btn-primary" onclick="addEmployee()">新增員工</button>
         </div>
       </div>
@@ -259,7 +263,7 @@ textarea{resize:vertical;min-height:76px}
 </div>
 
 <script>
-const API_URL = 'https://script.google.com/macros/s/AKfycbz4Fo5RyoH2soHGIvalNER8rM7H94SgrALgb1dck5X4meoI-6b99UfXoHsyuaxT9qk7/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbwSYfqph3EOjxhzN485xzXx084ruOJXdStPRxmAvanFSRXzh9-QGLGoLUYhP7BZompd/exec';
 
 let currentUser = null, employees = [], leaves = [], settings = {}, isHalfDay = false;
 let alertTimer = null;
@@ -381,6 +385,18 @@ function updateAnnualInfo() {
     text.innerHTML = `<span style="color:var(--blue-text);font-size:13px">
       📋 ${emp.name} 本年度特休：<strong>${emp.quota} 天</strong>｜已使用：<strong>${emp.usedAnnual} 天</strong>｜<strong style="color:${emp.remainAnnual===0?'var(--red-text)':'inherit'}">剩餘 ${emp.remainAnnual} 天</strong>
       ${period ? `<br><span style="color:var(--text-hint)">週期：${period.start} ～ ${period.end}</span>` : ''}
+    </span>`;
+  } else if (type === '生日假' && emp) {
+    card.style.display = 'block';
+    const bd = emp.birthday;
+    const bdMonth = bd ? parseInt(bd.split('-')[0]) : null;
+    const thisYear = new Date().getFullYear();
+    const alreadyUsed = leaves.some(l => l.empId === emp.id && l.type === '生日假'
+      && l.status !== '已拒絕' && new Date(l.start).getFullYear() === thisYear);
+    text.innerHTML = `<span style="font-size:13px;color:var(--blue-text)">
+      🎂 生日假每年 1 天，僅限生日當月使用
+      ${bdMonth ? `｜${emp.name} 的生日月份：<strong>${bdMonth} 月</strong>` : '｜<span style="color:var(--red-text)">尚未設定生日，請主管在系統設定填寫</span>'}
+      ${alreadyUsed ? '<br><span style="color:var(--red-text)">⚠️ 今年生日假已申請過</span>' : ''}
     </span>`;
   } else {
     card.style.display = 'none';
@@ -506,7 +522,7 @@ function renderOverview() {
   }).join('');
 
   // 各假別統計（只看自己）
-  const types = ['特休','病假','事假','生理假','婚假','喪假'];
+  const types = ['特休','病假','事假','生理假','婚假','喪假','生日假'];
   const tl = document.getElementById('typeStatList');
   const thisYear = new Date().getFullYear();
   const myThisYear = myApproved.filter(l => new Date(l.start).getFullYear() === thisYear);
@@ -558,9 +574,10 @@ async function addEmployee() {
   const name = document.getElementById('s-name').value.trim();
   const startDate = document.getElementById('s-startDate').value;
   const role = document.getElementById('s-role').value;
+  const birthday = document.getElementById('s-birthday').value.trim();
   if (!name) { showAlert('請輸入員工姓名', 'error'); return; }
   if (!startDate) { showAlert('請輸入到職日', 'error'); return; }
-  const res = await apiPost({ action:'addEmployee', name, startDate, role });
+  const res = await apiPost({ action:'addEmployee', name, startDate, role, birthday });
   if (res.success) {
     document.getElementById('s-name').value = '';
     document.getElementById('s-startDate').value = '';
@@ -588,7 +605,7 @@ function renderEmpList() {
     return `<div class="quota-row">
       <span style="min-width:80px;font-weight:500">${e.name}</span>
       <span style="color:var(--text-muted);font-size:13px;flex:1">
-        到職：${e.startDate || '未設定'}｜特休 ${quota} 天｜${e.role==='manager'?'主管':'員工'}
+        到職：${e.startDate || '未設定'}｜生日：${e.birthday || '未設定'}｜特休 ${quota} 天｜${e.role==='manager'?'主管':'員工'}
         ${period?`<br><span style="font-size:12px;color:var(--text-hint)">週期：${period.start}～${period.end}</span>`:''}
       </span>
       <button class="btn btn-sm btn-red" onclick="removeEmployee('${e.id}')">刪除</button>
