@@ -155,7 +155,8 @@ textarea{resize:vertical;min-height:76px}
           <label>請假單位</label>
           <div class="half-toggle">
             <button class="active" id="btn-full" onclick="setUnit('full')">全天</button>
-            <button id="btn-half" onclick="setUnit('half')" style="display:none">半天（0.5）</button>
+            <button id="btn-half-am" onclick="setUnit('am')" style="display:none">上半天 10:00-14:00</button>
+            <button id="btn-half-pm" onclick="setUnit('pm')" style="display:none">下半天 15:00-19:00</button>
           </div>
         </div>
         <div class="form-group">
@@ -263,9 +264,9 @@ textarea{resize:vertical;min-height:76px}
 </div>
 
 <script>
-const API_URL = 'https://script.google.com/macros/s/AKfycbwSYfqph3EOjxhzN485xzXx084ruOJXdStPRxmAvanFSRXzh9-QGLGoLUYhP7BZompd/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbyXe_cevh0OpHgKoP9PP6dQmxj1H86CUNX0FvYs2FQG1USzMnQYQD_kHT6ym_ne7GB9/exec';
 
-let currentUser = null, employees = [], leaves = [], settings = {}, isHalfDay = false;
+let currentUser = null, employees = [], leaves = [], settings = {}, halfDayType = 'full';
 let alertTimer = null;
 
 // ── API ──────────────────────────────────────────────────────
@@ -324,9 +325,11 @@ async function loadAll() {
   ]);
   employees = await api({ action: 'getEmployees' });
   const minUnit = String(settings.minUnit || '1');
-  document.getElementById('btn-half').style.display = minUnit === '0.5' ? '' : 'none';
-  document.getElementById('unit-yes').classList.toggle('active', minUnit === '0.5');
-  document.getElementById('unit-no').classList.toggle('active', minUnit === '1');
+  const showHalf = minUnit === '0.5';
+  document.getElementById('btn-half-am').style.display = showHalf ? '' : 'none';
+  document.getElementById('btn-half-pm').style.display = showHalf ? '' : 'none';
+  document.getElementById('unit-yes').classList.toggle('active', showHalf);
+  document.getElementById('unit-no').classList.toggle('active', !showHalf);
   renderMyLeaves(); renderReview(); renderOverview(); renderEmpList(); updatePendingBadge(); updateAnnualInfo();
 }
 
@@ -347,9 +350,10 @@ function showAlert(msg, type) {
 
 // ── 半天 / 天數計算 ───────────────────────────────────────────
 function setUnit(u) {
-  isHalfDay = (u === 'half');
-  document.getElementById('btn-full').classList.toggle('active', !isHalfDay);
-  document.getElementById('btn-half').classList.toggle('active', isHalfDay);
+  halfDayType = u; // 'full', 'am', 'pm'
+  document.getElementById('btn-full').classList.toggle('active', u === 'full');
+  document.getElementById('btn-half-am').classList.toggle('active', u === 'am');
+  document.getElementById('btn-half-pm').classList.toggle('active', u === 'pm');
   calcDaysPreview();
 }
 
@@ -358,8 +362,9 @@ function calcDaysPreview() {
   const e = document.getElementById('f-end').value;
   const el = document.getElementById('f-days-preview');
   if (!s || !e || e < s) { el.value = ''; return; }
+  if (halfDayType === 'am') { el.value = '0.5 天（上半天 10:00-14:00）'; return; }
+  if (halfDayType === 'pm') { el.value = '0.5 天（下半天 15:00-19:00）'; return; }
   let days = Math.round((new Date(e) - new Date(s)) / 86400000) + 1;
-  if (isHalfDay) days = 0.5;
   el.value = days + ' 天';
 }
 
@@ -367,7 +372,7 @@ function getDays() {
   const s = document.getElementById('f-start').value;
   const e = document.getElementById('f-end').value;
   if (!s || !e || e < s) return null;
-  if (isHalfDay) return 0.5;
+  if (halfDayType === 'am' || halfDayType === 'pm') return 0.5;
   return Math.round((new Date(e) - new Date(s)) / 86400000) + 1;
 }
 
@@ -419,13 +424,16 @@ async function submitLeave() {
   if (type === '特休' && days > emp.remainAnnual) {
     showAlert(`特休餘額不足！剩餘 ${emp.remainAnnual} 天，申請 ${days} 天`, 'error'); return;
   }
-  const res = await apiPost({ action:'submitLeave', empId:emp.id, empName:emp.name, type, start, end, days, reason });
+  // 半天時間資訊
+  const halfNote = halfDayType === 'am' ? '【上半天 10:00-14:00】' : halfDayType === 'pm' ? '【下半天 15:00-19:00】' : '';
+  const fullReason = halfNote ? (halfNote + (reason ? ' ' + reason : '')) : reason;
+  const res = await apiPost({ action:'submitLeave', empId:emp.id, empName:emp.name, type, start, end, days, reason:fullReason });
   if (res.success) {
     document.getElementById('f-start').value = '';
     document.getElementById('f-end').value = '';
     document.getElementById('f-reason').value = '';
     document.getElementById('f-days-preview').value = '';
-    isHalfDay = false;
+    halfDayType = 'full';
     setUnit('full');
     showAlert(`✓ 已送出申請（${emp.name}｜${type}｜${days} 天），等待主管審核`, 'success');
     await loadAll();
